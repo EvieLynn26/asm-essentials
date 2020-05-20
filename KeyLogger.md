@@ -6,7 +6,6 @@ The keyboard controller generates interrupt level 1 (IRQ 1) on each presss and r
 
 
 
-
 Sourses:
 THelp DOS
 
