@@ -8,13 +8,13 @@ MAX_NUM_LEN equ 10d
 
 section .data
 
-        test_char	db	'f'
-        test_str	db	"love", 0 	  
+        test_char	db	'&'
+        test_str	db	"astring", 0 	  
         test_int    db	123			   
         test_hex	db	0xff
 
        	;format_str	db	10, "my_str = %s", 10, "my_char = %c", 10, "my_int = %d", 10, "my_hex = %h", 10, 0
-		format_str db 10, "%d", 10, 0
+		format_str db 10, "%s", 10, 10, 0
 
         output_buff times 200h db 0
 		buff_for_num times MAX_NUM_LEN db '0'
@@ -28,25 +28,24 @@ global  _start
 
 ; Using cdecl calling convention
 
-;*done_b
 _start:
         ;push	test_hex
-        push	test_int
+        ;push	test_int
         ;push	test_char
-        ;push 	test_str
+		;push	test_char
+        push 	test_str
         push 	format_str
 
         call 	my_printf
 	
-        add esp, 20    ; args_num * 4(bytes)
+        add esp, 8    ; args_num * 4(bytes)
 
         mov eax, EXIT_CODE      ; sys_exit
         mov esi, ERROR_CODE
 
         int 0x80
-;*done_e
 
-; esi, edx, eax
+; Destroys esi, edx, eax
 
 my_printf:
         push ebp    
@@ -70,59 +69,60 @@ loop_start:
 
         ; parse '%' and arg
 		inc	esi     		; skip '%'
+		xor eax, eax
 		mov	al, byte[esi] 	; curr_byte (next to '%') in al
 		
 		cmp	al, '%'
 		je	to_copy 		;print '%'
 
 		;parse arg -->
+		inc esi             ; skip arg_letter after '%'
 
-		;mov ecx, [parse_char_arg]
-		;add ecx, eax
-		;sub ecx, 'b'		; table starts from 'b' -> 0
+		lea ecx, [.jump_table]
+		sub al, 'b'         ; table starts from 'b' -> 0
+		shl al, 1
+		add ecx, eax		
 
-		inc esi
-		jmp parse_dec_arg
+		jmp ecx
 
 .jump_table:
 		jmp parse_bin_arg 	;ascii 'b' (= 66d - 66d) -> 0
 		jmp parse_char_arg	;'c' -> 1
 		jmp parse_dec_arg	;'d' -> 2
-		nop 		;3
-		nop 		;3
-		nop 		;3
-		nop 		;3
-		nop 		;3
-		nop 		;3
-		nop 		;3
-		nop 		;3
-		nop 		;3
+		jmp loop_start 		;3 if wrong param, just skip it
+	    jmp loop_start 		;4
+		jmp loop_start 		;5
+		jmp loop_start 		;6
+		jmp loop_start 		;7
+		jmp loop_start 		;8
+		jmp loop_start 		;9
+		jmp loop_start 		;10
+		jmp loop_start 		;11
+		jmp loop_start 		;12
 		jmp parse_oct_arg   ;ascii 'o' (= 79d - 66d) -> 13
 		jmp loop_start 		;14
 		jmp loop_start 		;15
 		jmp loop_start 		;16
-		jmp parse_str_arg 		;ascii 's' (= 83d - 66d) -> 17
+		jmp parse_str_arg   ;ascii 's' (= 83d - 66d) -> 17
 		jmp loop_start 		;18
 		jmp loop_start 		;19
 		jmp loop_start 		;20
 		jmp loop_start 		;21
 		jmp parse_hex_arg 		;ascii 'x' (= 88d - 66d) -> 22
 
-
 parse_char_arg:
         mov	ecx, dword[ebp + edx * 4] 
         mov	 al,  byte[ecx]             
         mov	byte[output_buff + edi], al					
         inc	edi
-		inc esi
         inc	edx	
 		jmp	loop_start	
 
 		
 ;*********************************************************************	
 ;*  Takes string's address from stack and add to output_buffer       *
-;*  copy_str: 														 *
-;*		sourse_str at ecx											 *
+;*  copy_str:                                                        *
+;*     sourse_str at ecx                                             *
 ;*********************************************************************	
 parse_str_arg:				
 		mov	ecx, dword[ebp + edx * 4] ; in ecx -- offset string to add
@@ -138,7 +138,6 @@ parse_str_arg:
 		jmp	.copy_str
 
 .str_arg_end:
-		inc esi                       ; skip ;'s' after '%'
 		inc	edx						  ; skip arg in stack 
 		jmp	loop_start         
 
@@ -181,9 +180,9 @@ parse_hex_arg:
 ;*********************************************************************	
 ;*          Converst arg from stack to the number system             *
 ;*                   and puts into buff_for_num                      *
-;* 													                 *
-;*	 ebx = base of the number system                                 *
-;*								                                     *
+;*                                                                   *
+;*   ebx = base of the number system                                 *
+;*                                                                   *
 ;*                    All registers reserved.                        *         
 ;*********************************************************************
 convert_num_write:
@@ -196,7 +195,7 @@ convert_num_write:
 		mov	 al,  byte[ecx]				;num_to_convert in eax
 
 		cmp al, 123
-		je check
+		;je check
 
 		mov esi, buff_for_num
 		add esi, MAX_NUM_LEN
@@ -273,21 +272,21 @@ str_end:
 
 		int	0x80
 
-		pop	ebp
+		pop ebp
 
 		ret
 
 
-check:	
-		;syscall for writing check_buff
-		mov	edx, 10
-		mov	eax, SYS_WRITE
-		mov	esi, STDOUT
-		mov	ecx, check_buff
-
-		int	0x80
-
-		pop esi
-		pop ebp 
-		ret
+;check:	
+;		;syscall for writing check_buff
+;		mov	edx, 10
+;		mov	eax, SYS_WRITE
+;		mov	esi, STDOUT
+;		mov	ecx, check_buff
+;
+;		int	0x80
+;
+;		pop esi
+;		pop ebp 
+;		ret
 
