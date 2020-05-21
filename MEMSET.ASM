@@ -1,25 +1,44 @@
 ;****************************************************************************************
-;* Copies al-byte to the first cx bytes of es:[di]                                      *                                                                         *
+;* Sets al-byte to the first cx bytes of es:[di]                                        *
+;*                                                                                      *
+;* Destroys  bx, cx                                                                     *  
 ;****************************************************************************************
-
 .model tiny
 .386
 
-.code
+.data
+	LEN equ 8d	
 
-locals @@
+	dest   db LEN dup ('0'), '$'
+
+.code
 
 org 100h
 
-public memset
-
 start:
+	mov ax, ds
+	mov es, ax
+ 	lea di, dest
+	
+ 	mov al, '#'
+ 	mov cx, LEN
+
+ 	call memset
+
+ 	mov ah, 09h
+ 	mov dx, di
+ 	int 21h
+
 
 memset proc
-		cld
-		rep stosb	
+	mov bx, cx		
+	
+	cld
+	rep stosb
 
-		ret
+	sub di, bx	
+
+	ret
 memset endp
 
 end start
