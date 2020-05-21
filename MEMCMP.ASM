@@ -1,39 +1,64 @@
 ;****************************************************************************************
 ;* Compares strings (frst cx bytes) from ds:[si] and es:[di]                            *
-;* Returns result in ax: -1 if first str less, 0 if equal, 1 if first in bigger         *
+;* Returns result in al: delta of first different symbols                               *
+;* If strinds are equal returns 0 in al                                                 *
 ;****************************************************************************************
 
-.model tiny
+.model tiny                           
 .386
 
+.data
+
+	sourse db "String to compare F", '$'
+	dest   db "String to compare A", '$'
+	    
 .code
+
+	LEN equ 3d
 
 locals @@
 
 org 100h
 
+extrn check_correct
 public memcmp 
 
 start:
+	lea si, sourse
+	lea di, dest
 
+	mov ax, ds
+	mov es, ax      ; assume es = ds
+
+	mov cx, LEN	
+
+	call memcmp
+
+exit:   mov ax, 4c00h
+	int 21h
+
+
+;****************************************************************************************
+;*  Destroys si, di, cx                                                                 *
+;*  Returns result in al                                                                *
+;****************************************************************************************
 memcmp proc
 	cld
 	repe cmpsb 
 		
 	je @@equal
-	ja @@bigger
-	jb @@less
+	jmp @@ne
 
 @@equal:
-	mov dx, 0
+	mov al, 0
 	jmp @@exit
 
-@@bigger:
-	mov ax, 1
-	jmp @@exit
+@@ne:
+	dec si
+	dec di
 
-@@less:
-	mov ax, -1
+	mov al, byte ptr [si]
+	sub al, byte ptr [di]
 
 @@exit:
 	ret
