@@ -1,3 +1,10 @@
+;========================================================
+; Draws frame with params from console
+; frame x1 y1 aWidth aHeight Color 
+; each param should be a decimal two-digit number
+; Puts a label inside from lbl
+;========================================================
+
 .model tiny
 .386
 
@@ -21,8 +28,8 @@ strlen equ 21d
 x1 dw 30d
 y1 dw 10d
 
-aWIDTH  dw 30d
-aHEIGHT dw 10d
+aWidth  dw 30d
+aHeight dw 10d
 
 COLOR db 30d
 ;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
