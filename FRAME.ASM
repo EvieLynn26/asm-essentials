@@ -1,8 +1,9 @@
 .model tiny
-.code
-org 100h
+.386
 
 ;________________________________________________________
+.data
+
 VIDEO_MEM equ 0b800h
 
 SPACE equ 0h
@@ -13,63 +14,102 @@ DLF equ 0c8h
 DRF equ 0bch
 SIDE equ 0bah
 
-COLOR equ 0dh
-SHADOW equ 0b2h
+lbl db "td & tp (bd included)", '$'
+strlen equ 21d
 
-aWIDTH = 10d * 2
-aHEIGHT = 10d
+;!!!!!!!!!!!!!!DO NOT DOSCONNECT!!!!!!!!!!!!!!
+x1 dw 30d
+y1 dw 10d
 
-x1 = 80d - aWIDTH
-y1 = 24d - aHEIGHT 
-x2 equ 80d + aWIDTH 
-y2 equ 24d / 2 + aHEIGHT / 2
+aWIDTH  dw 30d
+aHEIGHT dw 10d
 
-NEW_LINE equ 160d - aWidth * 2
+COLOR db 30d
+;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SHADOW db 10000101b
 ;__________________________________________________________
 
-Start:		
+.code
+org 100h
+
+start:
+		mov si, 80h
+		mov al, byte ptr [si]	; check correct param
+		cmp al, 15d
+		jl default_params
+
+		call console_params
+
+default_params:
 		mov ax, VIDEO_MEM
-		mov es, ax 		; segment es points to video_memory		
-	
-		mov di, x1 + y1 * 80d + 20d
+		mov es, ax 	       ; segment es points to video_memory		
+
+		xor di, di
+		add di, word ptr [x1]
+		mov ax, word ptr [y1]
+		mov bl, 160d
+		mul bl
+		add di, ax             ; di = y1 * 160 + x1
+
+		push di                ; save di for label
 
 		call draw_frame
 
+		pop di
+		call put_label
+
+exit:
 		mov ax, 4c00h 		; exit
 		int 21h
 
 ;============================================================
 ;  Draws frame with left up angle x1, y1 and aWidth aHeight
+;
+;  Destroys dx, cx, ax
 ;============================================================
-draw_frame	proc	
-	;		call cls;
+draw_frame	proc
 			
-			;;! put params for top line
+		;;! put params for top line
 
-			mov dh, ULF
-			mov dl, URF
-			mov al, LINE 
+		mov dh, ULF
+		mov dl, URF
+		mov al, LINE 
+		call draw_line
+
+		;;! put params for middle lines in amount of (height - 2)
+
+		mov cx, word ptr [aHeight] 
+		sub cx, 2
+
+		inside:	mov dh, SIDE
+			mov dl, SIDE
+			mov al, SPACE
 			call draw_line
+		loop inside
 
-			;;! put params for middle lines in amount of (height - 2)
+		;;! put params for bottom line
+	
+		mov dh, DLF 
+		mov dl, DRF
+		mov al,	LINE
+		call draw_line
 
-			mov cx, aHeight - 2
-			inside:	mov dh, SIDE
-				mov dl, SIDE
-				mov al, SPACE
-				call draw_line
-			loop inside
+		; draws down shadow
+		add di, 2
+		mov byte ptr es:[di], DLF
+		inc di		
+		mov ah, byte ptr [SHADOW]
+		mov byte ptr es:[di], ah
+		inc di 
 
-			;;! put params for bottom line
+		mov al, LINE 
+		xor cx, cx
+		add cx, word ptr [aWidth]
+		sub cx, 2 			; cx = aWidth - 2
+		rep stosw
 		
-			mov dh, DLF 
-			mov dl, DRF
-			mov al,	LINE
-			call draw_line	
-	
-		;	call put_label
-	
-			ret
+		ret
 draw_frame	endp
 
 ;====================================================================
@@ -81,52 +121,133 @@ draw_frame	endp
 ;	and a frame to this line
 ;====================================================================	
 draw_line 	proc
-			push ax cx dx
+		push ax cx dx
 
-			mov byte ptr es:[di], dh
-			inc di		
-			mov byte ptr es:[di], COLOR
-			inc di
+		;-- set two bytes for left symb 	
+		mov byte ptr es:[di], dh
+		inc di		
  
-			mov ah, COLOR 
-			mov cx, aWidth - 2
-			rep stosw
+		mov ah, byte ptr [COLOR]
+		mov byte ptr es:[di], ah
+		inc di 
+
+		xor cx, cx
+		add cx, word ptr [aWidth]
+		sub cx, 2 			; cx = aWidth - 2
+		rep stosw
 				
-			mov byte ptr es:[di], dl
-			inc di
-			mov byte ptr es:[di], COLOR
-			inc di
-								
-			add di, NEW_LINE + 2
+		mov byte ptr es:[di], dl
+		inc di
+		mov byte ptr es:[di], ah
+		inc di				
 
-			mov al, SHADOW
-			mov ah, 01010101b ; draws shadow
-			mov cx, aWidth
-			rep stosw
+		add di, 160d
 
-			sub di, aWidth * 2 + 2 				
+		mov byte ptr es:[di], dl
+		inc di
+		mov ah, byte ptr [SHADOW]
+		mov byte ptr es:[di], ah
+		inc di
 
-			pop dx cx ax	
+		sub di, word ptr [aWidth]
+		sub di, word ptr [aWidth]
+		sub di, 2
 	
-			ret	
+		pop dx cx ax	
+	
+		ret	
 draw_line 	endp
 
-cls		 proc
-			mov ax, 0
-			mov di, 0
+;=================================================================
+;   Takes two_digit_nums from bx with spaces between
+;
+;   Destroys bx, cx, dl
+;=================================================================
+console_params 	proc
+		; si = 80h
 
-			mov ax, VIDEO_MEM
-   			mov es, ax
+		lea bx, x1  ; bx points to current arg
 
-			mov al, SPACE
-			mov ah, 00000000b	
-			mov cx, 0FFFFh
-			rep stosw
+		mov cx, 4   ; 4 times read args
+		
+		@@loop:
+			add si, 2   ; si on the first symb
 
-			mov ax, 6B00h
-			int 21h
-				
-			ret	
-cls 		endp
+			call bytes_to_num
+			mov word ptr [bx], ax
 
-end Start
+			add bx, 2
+
+		loop @@loop
+
+		add si, 2
+
+		call bytes_to_num
+		mov byte ptr [bx], al
+
+		;and al, 10000111b
+		;mov byte ptr [SHADOW], al
+
+		ret
+console_params  endp
+
+
+;==================================================================
+;   si -- source of bytes with numbers to convert
+;   
+;   returns num in ax
+;
+;   Destroys dl
+;==================================================================
+bytes_to_num    proc
+		mov dl, 10d
+                xor ax, ax
+                mov al, byte ptr [si]
+                sub al, '0'
+                mul dl
+
+                inc si
+                add al, byte ptr [si]
+                sub al, '0'
+                		
+		ret
+bytes_to_num    endp
+
+;=======================================================
+;  Destroys bx, di, ax, dx	
+;=======================================================
+put_label       proc
+
+		mov bx, word ptr [aHeight]
+		dec bx
+		shr bx, 1
+
+		mov ax,  bx
+		mov bx, 160d
+		mul bx
+
+		add di, ax
+	
+		mov bx, word ptr [aWidth]
+		sub bx, strlen
+		shr bx, 1
+		shl bx, 1
+		add di, bx
+
+		mov bx, offset lbl
+		cmp byte ptr [bx], '$'
+		je @@ret
+
+@@print:	
+		mov al, byte ptr [bx]
+		mov byte ptr es:[di], al
+		add di, 2
+		inc bx
+		cmp byte ptr [bx], '$'
+		jne @@print
+
+@@ret:		ret
+put_label       endp
+
+
+end start       
