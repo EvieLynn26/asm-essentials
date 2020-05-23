@@ -52,7 +52,7 @@ strcmp endp
 ;****************************************************************************************
 ;* Goes through srting, while end of str by es:[di] not finished with 0                 *
 ;* Returns length in cx	                                                                *
-;* Destroys al, cx                                                                      *
+;* Destroys di, al, cx                                                                  *
 ;****************************************************************************************
 strlen proc			
 	xor cx, cx
