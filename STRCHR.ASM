@@ -33,18 +33,20 @@ start:
        	mov ah, 09h
      	mov dx, di
         int 21h
+exit:
+	mov ah, 4ch
+	int 21h
 
 strchr proc
-    push ax
-    push di
-    call strlen
-    pop di
-    pop ax
-    mov cx, bx
+	push ax
+	push di
+	call strlen
+	pop di
+    	pop ax
+    
+    	call memchr
 
-    call memchr
-
-    ret
+    	ret
 strchr endp
            
 ;****************************************************************************************
@@ -68,18 +70,20 @@ memchr proc
 memchr endp
 
 ;****************************************************************************************
-;* Goes through srting dec cx, while end of str by es:[di] not finished with 0          *
-;* Returns length in bx	                                                                *
-;* Destroys al, cx                                                                      *
+;* Goes through srting, while end of str by es:[di] not finished with 0                 *
+;* Returns length in cx	                                                                *
+;* Destroys di, al, cx                                                                  *
 ;****************************************************************************************
 strlen proc			
-	mov cx, 0ffffh ; max available value of cx (16 bytes)
-	mov bx, cx
-	mov al, 0
+	xor cx, cx
+	not cx ; max available value of cx (16 bytes)
+	xor al, al
             
 	cld
 	repne scasb
-	sub bx, cx
+	
+	not cx
+	dec cx
 
 	ret
 strlen endp				
