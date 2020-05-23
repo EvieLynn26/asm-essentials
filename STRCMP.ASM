@@ -6,8 +6,8 @@
 .386
 
 .data
-	source	db 'To compare aaa', 0
-	dest	db 'To compare bbb and get al = -1 ', 0
+	source	db 'To compare bbb', 0
+	dest	db 'To compare aaa and get al = 1 ', 0
 
 .code
 
@@ -34,8 +34,9 @@ exit:
 ;********************************************************************
 strcmp proc			
 
+	push di
 	call strlen
-	mov cx, bx
+	pop di
 		
 	cld
 	repe cmpsb
@@ -49,20 +50,22 @@ strcmp proc
 strcmp endp
 
 ;****************************************************************************************
-;* Goes through srting dec cx, while end of str by es:[di] not finished with 0          *
-;* Returns length in bx	                                                                *
+;* Goes through srting, while end of str by es:[di] not finished with 0                 *
+;* Returns length in cx	                                                                *
 ;* Destroys al, cx                                                                      *
 ;****************************************************************************************
 strlen proc			
-	mov cx, 0ffffh ; max available value of cx (16 bytes)
-	mov bx, cx
-	mov al, 0
+	xor cx, cx
+	not cx ; max available value of cx (16 bytes)
+	xor al, al
             
 	cld
 	repne scasb
-	sub bx, cx
+	
+	not cx
+	dec cx
 
 	ret
-strlen endp				
+strlen endp
 
 end start
