@@ -1,6 +1,6 @@
 ;****************************************************************************************
 ;* Sets al-byte to the first cx bytes of es:[di]                                        *
-;*                                                                                      *
+;* Returns start of given block of memory in di                                         *
 ;* Destroys  bx, cx                                                                     *  
 ;****************************************************************************************
 .model tiny
@@ -29,6 +29,9 @@ start:
  	mov dx, di
  	int 21h
 
+exit:
+	mov ah, 4ch
+	int 21h
 
 memset proc
 	mov bx, cx		
