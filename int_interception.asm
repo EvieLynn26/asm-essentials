@@ -5,6 +5,12 @@
 .model tiny
 .386
 
+;____________________________________________________________________________________
+VIDEO_MEM equ 0b800h
+PLACE_TO_WRITE equ (6 * 80 + 40) * 2
+COLOR equ 30d
+;____________________________________________________________________________________
+
 .code
 
 locals @@
@@ -31,33 +37,35 @@ start:
 	
 	
 	mov ax, 3100h
-	mov dx, 200d ;offset end start - offset New09 proc   ; size of memory  to stay rezident
+	mov bx, offset lbl_to_count_size
+	sub bx, offset New09 
+	mov dx, bx ; size of memory  to stay rezident
 	int 21h
 
 	sti ; interrupt interception finished, set interrupt-enable flag
 
-New09 proc
-	push ax di es
+New09 	proc
+	push es di ax
 
-
-	mov ax, 0b800H
+	mov ax, VIDEO_MEM
 	mov es, ax
 
-	in al, 60H
+	in al, 60h  ; get scan-code from 60th port
 
-	mov di, (5*80+40)*2
-	mov ah, 4eH
+	mov di, PLACE_TO_WRITE 
+	mov ah, COLOR
 	
 	cld
 	stosw
 
-	pop es di ax
+	pop ax di es
 
-	db 0eaH		; op_code for jmp far
+	db 0eah		; op_code for jmp far
 Old09h 	dw 0            ; here will be setted address of int 09h to run
 	dw 0
 	
 	iret
-	endp
+New09	endp
 
+lbl_to_count_size:
 end Start
