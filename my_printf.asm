@@ -8,13 +8,21 @@ MAX_NUM_LEN equ 10d
 
 section .data
 
-        test_char	db	'&'
-        test_str	db	"astring", 0 	  
-        test_int    db	123			   
-        test_hex	db	0xff
+        test_char		db	'#'
+        test_str		db	"astring", 0 	  
+        test_int    	db	123			   
+        test_hex		db	0xff
 
-       	;format_str	db	10, "my_str = %s", 10, "my_char = %c", 10, "my_int = %d", 10, "my_hex = %h", 10, 0
-		format_str db 10, "%s", 10, 10, 0
+       	test_int_out	db	10, "my_int = 123", 10, 0
+		test_hex_out 	db	10, "test hex = 0xff", 10, 0
+		test_char_out	db	10, "test char = #", 10, 0
+		test_str_out	db	10, "test str = astring", 10, 0
+
+       	; format_str	db	10, "my_str = %s", 10, "my_char = %c", 10, "my_int = %d", 10, "my_hex = %h", 10, 0
+       	test_int_fstr	db	10, "my_int = %d", 10, 0
+		test_hex_fstr 	db	10, "test hex = %h", 10, 0
+		test_char_fstr	db	10, "test char = %c", 10, 0
+		test_str_fstr	db	10, "test str = %s", 10, 0
 
         output_buff times 200h db 0
 		buff_for_num times MAX_NUM_LEN db '0'
@@ -28,18 +36,27 @@ global  _start
 
 ; Using cdecl calling convention
 
+unittest:
+       	push ebp
+		mov ebp, esp
+		add ebp, 12
+
+		call unittest_int
+
+		call unittest_hex
+
+		call unittest_char
+
+		call unittest_str
+
+		pop ebp
+
+		ret
+
 _start:
-        ;push	test_hex
-        ;push	test_int
-        ;push	test_char
-		;push	test_char
-        push 	test_str
-        push 	format_str
+       call unittest
 
-        call 	my_printf
-	
-        add esp, 8    ; args_num * 4(bytes)
-
+ exit:
         mov eax, EXIT_CODE      ; sys_exit
         mov esi, ERROR_CODE
 
@@ -53,7 +70,7 @@ my_printf:
 
         ; format_str at ebp + 8  stack: <--|saved ebp|ret addr|format_str|arg1|...
         mov	esi, dword[ebp + 8]
-		add ebp, 12d     ; set ebp on the first arg
+		add ebp, 12d; set ebp on the first arg
         xor	edx, edx    ; edx -- offset in stack
         xor	edi, edi    ; edi -- offset in destination (output_buffer)
 
@@ -276,17 +293,106 @@ str_end:
 
 		ret
 
+unittest_int:
+		push ebp
+		mov ebp, esp
+		add ebp, 12
 
-;check:	
-;		;syscall for writing check_buff
-;		mov	edx, 10
-;		mov	eax, SYS_WRITE
-;		mov	esi, STDOUT
-;		mov	ecx, check_buff
-;
-;		int	0x80
-;
-;		pop esi
-;		pop ebp 
-;		ret
+		push test_int
+		push test_int_fstr
+
+		call my_printf
+		add	esp, 4 * 2
+
+		cld
+		mov esi, test_int_out
+		mov edi, output_buff
+		repe cmpsb
+
+		cmp al, 0
+		je .no_errors
+		jmp exit
+
+.no_errors:
+		pop ebp
+
+		ret
+
+unittest_hex:
+		push ebp
+		mov ebp, esp
+		add ebp, 12
+
+		push test_hex
+		push test_hex_fstr
+
+		call my_printf
+		add  esp, 4 * 2
+
+		cld
+		mov esi, test_int_out
+		mov edi, output_buff
+		repe cmpsb
+
+		cmp al, 0
+		je .no_errors
+		jmp exit
+
+.no_errors:
+		
+		pop ebp
+
+		ret
+
+unittest_char:
+		push ebp
+		mov ebp, esp
+		add ebp, 12
+		
+		push test_char
+		push test_char_fstr
+
+		call my_printf
+		add  esp, 4 * 2
+
+		cld
+		mov esi, test_int_out
+		mov edi, output_buff
+		repe cmpsb
+
+		cmp al, 0
+		je .no_errors
+		jmp exit
+
+.no_errors:
+
+		pop ebp
+
+		ret
+
+unittest_str:
+		push ebp
+		mov ebp, esp
+		add ebp, 12
+
+		push test_str
+		push test_str_fstr
+
+		call my_printf
+		add  esp, 4 * 2	; args_num * 4(bytes)
+
+		cld
+		mov esi, test_int_out
+		mov edi, output_buff
+		repe cmpsb
+
+		cmp al, 0
+		je .no_errors
+		jmp exit
+
+.no_errors:
+
+		pop ebp
+	
+		ret
 
